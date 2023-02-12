@@ -1,20 +1,5 @@
 'use strict';
 
-const months = [
-   'January',
-   'February',
-   'March',
-   'April',
-   'May',
-   'June',
-   'July',
-   'August',
-   'September',
-   'October',
-   'November',
-   'December',
-];
-
 const form = document.querySelector('.form');
 const containerWorkouts = document.querySelector('.workouts');
 const inputType = document.querySelector('.form__input--type');
@@ -31,6 +16,11 @@ class Workout {
       this.coords = coords; // [latitude, longitude]
       this.distance = distance; // in km
       this.duration = duration; // in min
+   }
+
+   _setDescription() {
+      // prettier-ignore
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
    }
 }
 
@@ -138,6 +128,10 @@ class App {
 
    // New workout, display on the map
    _newWorkout(e) {
+      const validInputs = (...inputs) =>
+         inputs.every((input) => Number.isFinite(input));
+      const allPositive = (...inputs) => inputs.every((input) => input > 0);
+
       e.preventDefault();
 
       // Get data from form
@@ -147,11 +141,16 @@ class App {
       const { lat, lng } = this.#mapEvent.latlng;
       let workout;
 
-      // Check if data is valid
-
       // If workout Running, create Running object
       if (type === 'running') {
          const cadence = Number(inputCadence.value);
+         // Check if data is valid
+         if (
+            !validInputs(distance, duration, cadence) ||
+            !allPositive(distance, duration, cadence)
+         ) {
+            alert('Inputs have to be positive numbers!');
+         }
 
          workout = new Running([lat, lng], distance, duration, cadence);
       }
@@ -159,6 +158,13 @@ class App {
       // If workout Cycling, create Cycling object
       if (type === 'cycling') {
          const elevation = Number(inputElevation.value);
+         // Check if data is valid
+         if (
+            !validInputs(distance, duration, elevation) ||
+            !allPositive(distance, duration)
+         ) {
+            alert('Inputs have to be positive numbers!');
+         }
 
          workout = new Cycling([lat, lng], distance, duration, elevation);
       }
@@ -167,9 +173,10 @@ class App {
       this.#workouts.push(workout);
 
       // Render workout on the map as marker
-      this.renderWorkoutMarker(workout);
+      this._renderWorkoutMarker(workout);
 
       // Render workout in the list
+      this._renderWorkout(workout);
 
       // Hide form + clear input fields
       inputDistance.value =
@@ -179,7 +186,7 @@ class App {
             '';
    }
 
-   renderWorkoutMarker(workout) {
+   _renderWorkoutMarker(workout) {
       L.marker(workout.coords)
          .addTo(this.#map)
          .bindPopup(
@@ -193,6 +200,25 @@ class App {
          )
          .setPopupContent(workout.type)
          .openPopup();
+   }
+
+   _renderWorkout(workout) {
+      const html = `
+         <li class="workout workout--${workout.type}" data-id="${workout.id}">
+            <h2 class="workout__title">Running on April 14</h2>
+            <div class="workout__details">
+               <span class="workout__icon">${
+                  workout.type === 'running' ? '🏃‍♂️' : '🚴‍♀️'
+               }</span>
+               <span class="workout__value">${workout.distance}</span>
+               <span class="workout__unit">km</span>
+            </div>
+            <div class="workout__details">
+               <span class="workout__icon">⏱</span>
+               <span class="workout__value">${workout.duration}</span>
+               <span class="workout__unit">min</span>
+            </div>
+      `;
    }
 }
 
