@@ -68,16 +68,25 @@ class Cycling extends Workout {
 class App {
    // Private properties
    #map;
+   #mapZoomLevel = 13;
    #mapEvent;
    #workouts = [];
 
    constructor() {
+      // Get user's position
       this._getPosition();
 
+      // Get data from local storage
+      this._getLocalStorage();
+
+      // Submit form
       form.addEventListener('submit', this._newWorkout.bind(this));
 
       // Form input type toggle between Running and Cycling
       inputType.addEventListener('change', this._toggleElevationField);
+
+      // Move to map popup, when click on workout list item
+      containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
    }
 
    // Get Current location coords using geolocation api
@@ -105,7 +114,7 @@ class App {
       const coords = [latitude, longitude];
 
       // Map using Leaflet library
-      this.#map = L.map('map').setView(coords, 13);
+      this.#map = L.map('map').setView(coords, this.#mapZoomLevel);
 
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
          attribution:
@@ -114,6 +123,10 @@ class App {
 
       // Dealing with events (user clicks on map)
       this.#map.on('click', this._showForm.bind(this));
+
+      this.#workouts.forEach((work) => {
+         this._renderWorkoutMarker(work);
+      });
    }
 
    _showForm(e) {
@@ -197,6 +210,9 @@ class App {
 
       // Hide form + clear input fields
       this._hideForm();
+
+      // set local storage to all workouts
+      this._setLocalStorage();
    }
 
    // Render workout on the map as marker
@@ -216,8 +232,6 @@ class App {
             `${workout.type === 'running' ? '🏃‍♂️' : '🚴‍♀️'} ${workout.description}`
          )
          .openPopup();
-
-      console.log(workout);
    }
 
    // Render workout in the list
@@ -272,6 +286,49 @@ class App {
       }
 
       form.insertAdjacentHTML('afterend', html);
+   }
+
+   // Move to map popup, when click on workout list item
+   _moveToPopup(e) {
+      const workoutEl = e.target.closest('.workout');
+
+      // If there is no workout list then return nothing
+      if (!workoutEl) return;
+
+      // Get the clicked workout item details
+      const workout = this.#workouts.find(
+         (work) => work.id === workoutEl.dataset.id
+      );
+
+      this.#map.setView(workout.coords, this.#mapZoomLevel, {
+         animate: true,
+         duration: 1,
+      });
+   }
+
+   // Store all workouts in the local storage
+   _setLocalStorage() {
+      localStorage.setItem('workouts', JSON.stringify(this.#workouts));
+   }
+
+   // Show workouts on the map when page loads
+   _getLocalStorage() {
+      const data = JSON.parse(localStorage.getItem('workouts'));
+
+      // If there is no data do nothing
+      if (!data) return;
+
+      this.#workouts = data;
+
+      this.#workouts.forEach((work) => {
+         this._renderWorkout(work);
+      });
+   }
+
+   // Remove Data from Local Storage
+   reset() {
+      localStorage.removeItem('workouts');
+      location.reload();
    }
 }
 
